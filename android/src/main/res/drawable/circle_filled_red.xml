@@ -18,7 +18,7 @@
             android:thicknessRatio="2.0"
             android:useLevel="false">
 
-            <solid android:color="@color/red" />
+            <solid android:color="@color/call_end_red" />
         </shape>
     </item>
 </ripple>
