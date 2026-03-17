@@ -53,28 +53,32 @@ android {
         minSdkVersion 24
         multiDexEnabled true
         targetSdkVersion 34
+
+        // Only include arm64 to significantly reduce APK size
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
     }
 
     dependencies {
+        // Webex SDK - core dependency
         implementation "com.ciscowebex:webexsdk:3.13.0"
+
+        // UI essentials
         implementation 'com.google.android.material:material:1.12.0'
         implementation 'androidx.appcompat:appcompat:1.7.0'
         implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-        implementation 'androidx.navigation:navigation-fragment-ktx:2.8.3'
-        implementation 'androidx.navigation:navigation-ui-ktx:2.8.3'
 
+        // Reactive programming (used in login flow)
         implementation "io.reactivex.rxjava2:rxjava:2.2.11"
         implementation "io.reactivex.rxjava2:rxandroid:2.1.1"
 
-        implementation "com.google.firebase:firebase-bom:26.1.0"
-        implementation "com.google.firebase:firebase-messaging:24.0.3"
-
+        // Dependency injection
         implementation "io.insert-koin:koin-core:2.2.3"
         implementation "io.insert-koin:koin-androidx-viewmodel:2.2.3"
 
-        implementation  "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+        // Data binding compiler
         kapt 'com.android.databinding:compiler:3.1.4'
-        implementation "androidx.media:media:1.1.0"
 
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
@@ -94,6 +98,5 @@ android {
     buildFeatures {
         viewBinding true
         dataBinding true
-
     }
 }

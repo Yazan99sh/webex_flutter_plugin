@@ -7,7 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
-
+import org.koin.core.context.GlobalContext
 
 class WebexCallApp : Application(), LifecycleObserver {
 
@@ -18,32 +18,22 @@ class WebexCallApp : Application(), LifecycleObserver {
         fun applicationContext(): Context {
             return instance.applicationContext
         }
-
-        fun get(): WebexCallApp {
-            return instance
-        }
-
-
     }
 
     override fun onCreate() {
         super.onCreate()
-        startKoin {
-            androidLogger()
-            androidContext(this@WebexCallApp)
+        // Only start Koin if not already started
+        if (GlobalContext.getOrNull() == null) {
+            startKoin {
+                androidLogger()
+                androidContext(this@WebexCallApp)
+            }
         }
-
-        ProcessLifecycleOwner.get().lifecycle.addObserver(this);
+        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
         instance = this
     }
-
-
-    fun closeApplication() {
-        android.os.Process.killProcess(android.os.Process.myPid())
-    }
-
 }

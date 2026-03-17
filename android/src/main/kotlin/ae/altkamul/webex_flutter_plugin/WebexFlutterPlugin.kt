@@ -1,26 +1,27 @@
 package ae.altkamul.webex_flutter_plugin
 
-import ae.altkamul.webex_flutter_plugin.WebexCallApp.Companion.applicationContext
 import ae.altkamul.webex_flutter_plugin.auth.JWTLoginActivity
+import android.app.Activity
 import android.content.Intent
-import androidx.annotation.NonNull
-import androidx.core.content.ContextCompat.startActivity
-import com.ciscowebex.androidsdk.Webex
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry
 
+class WebexFlutterPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
+    PluginRegistry.ActivityResultListener {
 
-/** WebexFlutterPlugin */
-class WebexFlutterPlugin : FlutterPlugin, MethodCallHandler {
-    /// The MethodChannel that will the communication between Flutter and native Android
-    ///
-    /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-    /// when the Flutter Engine is detached from the Activity
     private lateinit var channel: MethodChannel
+    private var activity: Activity? = null
+    private var pendingResult: Result? = null
+
+    companion object {
+        const val REQUEST_CODE_WEBEX_CALL = 9001
+    }
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(
@@ -32,26 +33,57 @@ class WebexFlutterPlugin : FlutterPlugin, MethodCallHandler {
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         if (call.method == "startWebexCalling") {
-            val intent =
-                Intent(
-                    applicationContext(),
-                    JWTLoginActivity::class.java
-                ).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }.putExtra(
-                    Constants.Intent.OUTGOING_CALL_CALLER_ID,
-                    call.argument<String>("caller_id")
-                ).putExtra(
-                    Constants.Intent.JWTToken,
-                    call.argument<String>("jwt_token")
-                )
-            applicationContext().startActivity(intent)
+            val currentActivity = activity
+            if (currentActivity == null) {
+                result.error("NO_ACTIVITY", "No activity available", null)
+                return
+            }
+
+            // Store pending result to resolve when call activity finishes
+            pendingResult = result
+
+            val intent = Intent(currentActivity, JWTLoginActivity::class.java).apply {
+                putExtra(Constants.Intent.OUTGOING_CALL_CALLER_ID, call.argument<String>("caller_id"))
+                putExtra(Constants.Intent.JWTToken, call.argument<String>("jwt_token"))
+            }
+            currentActivity.startActivityForResult(intent, REQUEST_CODE_WEBEX_CALL)
         } else {
             result.notImplemented()
         }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode == REQUEST_CODE_WEBEX_CALL) {
+            val status = data?.getStringExtra("status") ?: "unknown"
+            val message = data?.getStringExtra("message") ?: ""
+
+            pendingResult?.success(mapOf("status" to status, "message" to message))
+            pendingResult = null
+            return true
+        }
+        return false
+    }
+
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+    }
+
+    // ActivityAware
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        binding.addActivityResultListener(this)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activity = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        binding.addActivityResultListener(this)
+    }
+
+    override fun onDetachedFromActivity() {
+        activity = null
     }
 }
